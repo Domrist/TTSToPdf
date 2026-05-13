@@ -2,13 +2,8 @@
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QLabel>
-#include <QPushButton>
-#include <QSpinBox>
-#include <QDoubleSpinBox>
-#include <QLineEdit>
-#include <QFileDialog>
-#include <QCheckBox>
+#include <QPdfWriter>
+#include <QPainter>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -18,14 +13,12 @@ MainWindow::MainWindow(QWidget *parent)
 	{
 		QHBoxLayout * pathSelectorLayout = new QHBoxLayout();
 		{
-			QLineEdit * pathLineEdit = new QLineEdit();
-			{
-				pathLineEdit->setMinimumWidth(200);
-			}
-			pathSelectorLayout->addWidget(pathLineEdit);
+			pathSelectorLayout->addWidget(&_pathToRead);
 
 			QPushButton * selectPathToOpenButton = new QPushButton("Выбарть файл");
 			pathSelectorLayout->addWidget(selectPathToOpenButton);
+			// make connect
+			connect(selectPathToOpenButton, &QPushButton::clicked, this, &MainWindow::selectFileToProcessFile);
 		}
 		mainLayout->addLayout(pathSelectorLayout);
 
@@ -34,8 +27,10 @@ MainWindow::MainWindow(QWidget *parent)
 			QLabel * l = new QLabel("Отступы между элементами");
 			marginLayout->addWidget(l);
 
-			QLineEdit * e = new QLineEdit();
+			QDoubleSpinBox * e = new QDoubleSpinBox();
 			marginLayout->addWidget(e);
+
+			connect(e, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &MainWindow::setMargins);
 		}
 		mainLayout->addLayout(marginLayout);
 
@@ -46,7 +41,8 @@ MainWindow::MainWindow(QWidget *parent)
 			QLabel * h = new QLabel("Высота карты"); cardDimension->addWidget(h);
 			QDoubleSpinBox * dh = new QDoubleSpinBox(); cardDimension->addWidget(dh);
 
-			// connect signals to setting main settings
+			connect(dw, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &MainWindow::setCardWidth);
+			connect(dh, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &MainWindow::setCardHeight);
 		}
 		mainLayout->addLayout(cardDimension);
 
@@ -55,7 +51,7 @@ MainWindow::MainWindow(QWidget *parent)
 			QLabel * l = new QLabel("Разделитель");
 			dividerFlagLayout->addWidget(l);
 			QCheckBox * c = new QCheckBox();
-			// do connect
+			connect(c, &QCheckBox::stateChanged, this, &MainWindow::setDividerFlag);
 			dividerFlagLayout->addWidget(c);
 		}
 		mainLayout->addLayout(dividerFlagLayout);
@@ -66,24 +62,23 @@ MainWindow::MainWindow(QWidget *parent)
 			orientationLayout->addWidget(l);
 			QCheckBox * checkbox = new QCheckBox();
 			orientationLayout->addWidget(checkbox);
-			// make connect
+			connect(checkbox, &QCheckBox::stateChanged, this, &MainWindow::setOrientation);
 		}
 		mainLayout->addLayout(orientationLayout);
 
 		QHBoxLayout * selectPathLayout = new QHBoxLayout();
 		{
-			QLineEdit * selectPathLineEdit = new QLineEdit();
-			selectPathLayout->addWidget(selectPathLineEdit);
+			selectPathLayout->addWidget(&_pathToSave);
 
 			QPushButton * b = new QPushButton("Выбрать путь сохранения");
 			selectPathLayout->addWidget(b);
-			// make connect
+			connect(b, &QPushButton::clicked, this, &MainWindow::selectSavePath);
 		}
 		mainLayout->addLayout(selectPathLayout);
 	}
 
 	QPushButton * generateButton = new QPushButton("Сгенерировать");
-	// connect to signal
+	connect(generateButton, &QPushButton::clicked, this, &MainWindow::generate);
 	mainLayout->addWidget(generateButton);
 
 	widget.setLayout(mainLayout);
@@ -93,3 +88,89 @@ MainWindow::~MainWindow()
 {
 }
 
+
+
+void MainWindow::selectFileToProcessFile()
+{
+	_pathToRead.setText(QFileDialog::getOpenFileName());
+}
+
+
+
+void MainWindow::setMargins(double a_value)
+{
+	//
+}
+
+
+
+void MainWindow::setCardWidth(double a_value)
+{
+	//
+}
+
+
+
+void MainWindow::setCardHeight(double a_value)
+{
+	//
+}
+
+
+
+void MainWindow::setDividerFlag(int a_state)
+{
+	//
+}
+
+
+
+void MainWindow::selectSavePath()
+{
+	//
+	_pathToSave.setText(QFileDialog::getSaveFileName());
+}
+
+
+
+void MainWindow::setOrientation(int a_state)
+{
+	//
+}
+
+
+
+void MainWindow::generate()
+{
+	if (_pathToSave.text().isEmpty())
+	{
+		return;
+	}
+
+	if (_pathToRead.text().isEmpty())
+	{
+		return;
+	}
+
+	if (!_outputSettings.isValid())
+	{
+		return;
+	}
+
+	QImage origin(_pathToRead.text());
+
+	QPdfWriter pdfWriter(_pathToSave.text());
+
+	pdfWriter.setResolution(300); // by default
+	pdfWriter.setPageSize(QPdfWriter::A4);
+	pdfWriter.setPageOrientation(QPageLayout::Orientation::Portrait);
+
+	QPainter painter(&pdfWriter);
+
+	QImage map = origin.copy(0,0,100,100);
+
+	painter.drawImage(0,0, map);
+
+
+	// do any other generations
+}
