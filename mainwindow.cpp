@@ -4,6 +4,10 @@
 #include <QHBoxLayout>
 #include <QPdfWriter>
 #include <QPainter>
+#include <QDebug>
+
+#define PDF_RESOLUTION 300
+#define MM_PER_INC 24.5
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -36,15 +40,41 @@ MainWindow::MainWindow(QWidget *parent)
 
 		QHBoxLayout * cardDimension = new QHBoxLayout();
 		{
-			QLabel * w = new QLabel("Ширина карты"); cardDimension->addWidget(w);
+			QLabel * w = new QLabel("Ширина карты (мм)"); cardDimension->addWidget(w);
 			QDoubleSpinBox * dw = new QDoubleSpinBox(); cardDimension->addWidget(dw);
-			QLabel * h = new QLabel("Высота карты"); cardDimension->addWidget(h);
+			QLabel * h = new QLabel("Высота карты (мм)"); cardDimension->addWidget(h);
 			QDoubleSpinBox * dh = new QDoubleSpinBox(); cardDimension->addWidget(dh);
 
 			connect(dw, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &MainWindow::setCardWidth);
 			connect(dh, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &MainWindow::setCardHeight);
 		}
 		mainLayout->addLayout(cardDimension);
+
+		QHBoxLayout * horizontalMaxCardCount = new QHBoxLayout();
+		{
+			QLabel *hcl = new QLabel("Количество карт по горизонтали (в фале оригинала)"); horizontalMaxCardCount->addWidget(hcl);
+			QSpinBox * hc = new QSpinBox(); horizontalMaxCardCount->addWidget(hc);
+
+			QLabel *vcl = new QLabel("Количество карт по вертикали (в фале оригинала)"); horizontalMaxCardCount->addWidget(vcl);
+			QSpinBox * vc = new QSpinBox(); horizontalMaxCardCount->addWidget(vc);
+
+			connect(hc, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),this, &MainWindow::setMaxHCardcount);
+			connect(vc, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),this, &MainWindow::setMaxVCardCount);
+		}
+		mainLayout->addLayout(horizontalMaxCardCount);
+
+		QHBoxLayout * pageSettingLayout = new QHBoxLayout();
+		{
+			QLabel *hcl = new QLabel("Количество карт по горизонтали "); pageSettingLayout->addWidget(hcl);
+			QSpinBox * hc = new QSpinBox(); pageSettingLayout->addWidget(hc);
+
+			QLabel *vcl = new QLabel("Количество карт по вертикали (в фале оригинала)"); pageSettingLayout->addWidget(vcl);
+			QSpinBox * vc = new QSpinBox(); pageSettingLayout->addWidget(vc);
+
+			connect(hc, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),this, &MainWindow::setMaxHCardcount);
+			connect(vc, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),this, &MainWindow::setMaxVCardCount);
+		}
+		mainLayout->addLayout(pageSettingLayout);
 
 		QHBoxLayout * dividerFlagLayout = new QHBoxLayout();
 		{
@@ -99,21 +129,21 @@ void MainWindow::selectFileToProcessFile()
 
 void MainWindow::setMargins(double a_value)
 {
-	//
+	_outputSettings.margin = a_value;
 }
 
 
 
 void MainWindow::setCardWidth(double a_value)
 {
-	//
+	_outputSettings.cardW = a_value;
 }
 
 
 
 void MainWindow::setCardHeight(double a_value)
 {
-	//
+	_outputSettings.cardH = a_value;
 }
 
 
@@ -135,13 +165,45 @@ void MainWindow::selectSavePath()
 
 void MainWindow::setOrientation(int a_state)
 {
-	//
+	_outputSettings.isPortraitOrientation = a_state;
+}
+
+
+
+void MainWindow::setMaxHCardcount(int a_cardHMaxCount)
+{
+	// setting card count
+	_outputSettings.cardCountMaxX = a_cardHMaxCount;
+}
+
+
+
+void MainWindow::setMaxVCardCount(int a_cardVMaxCount)
+{
+	_outputSettings.cardCountMaxY = a_cardVMaxCount;
+}
+
+
+
+void MainWindow::setRowCountPerPage(int a_count)
+{
+	_outputSettings.rowCountPerPage = a_count;
+}
+
+
+
+void MainWindow::setColumnCountPerPage(int a_count)
+{
+	_outputSettings.columnCountPerPage = a_count;
 }
 
 
 
 void MainWindow::generate()
 {
+	_pathToRead.setText("/home/user/da/pro/sandbox/TTSToPDF/template-sheet.png");
+	_pathToSave.setText("/home/user/da/pro/sandbox/TTSToPDF/qweqwe");
+
 	if (_pathToSave.text().isEmpty())
 	{
 		return;
@@ -152,10 +214,10 @@ void MainWindow::generate()
 		return;
 	}
 
-	if (!_outputSettings.isValid())
-	{
-		return;
-	}
+	// if (!_outputSettings.isValid())
+	// {
+	// 	return;
+	// }
 
 	QImage origin(_pathToRead.text());
 
@@ -167,10 +229,46 @@ void MainWindow::generate()
 
 	QPainter painter(&pdfWriter);
 
-	QImage map = origin.copy(0,0,100,100);
+	int cardOriginW = origin.width() / _outputSettings.cardCountMaxX;
+	int cardOriginH = origin.height() / _outputSettings.cardCountMaxY;
 
-	painter.drawImage(0,0, map);
+	int currentRowCount = 0;
+	int currentColCount = 0;
 
+	for(int y = 0; y < _outputSettings.cardCountMaxY; y++)
+	{
+		for(int x = 0; x < _outputSettings.cardCountMaxX; x++)
+		{
+			int leftX = x * cardOriginW;
+			int leftY = y * cardOriginH;
+			int rightX = leftX + cardOriginW;
+			int rightY = leftY + cardOriginH;
+			QImage map = origin.copy(leftX, leftY , cardOriginW, cardOriginH);
+
+			map = map.scaled(_outputSettings.cardW * (PDF_RESOLUTION / MM_PER_INC), _outputSettings.cardH * (PDF_RESOLUTION / MM_PER_INC));
+
+			qDebug() << map.size() << " VS pdw writer width -> " <<  pdfWriter.width();
+
+			int xDraw = currentColCount * _outputSettings.cardW * PDF_RESOLUTION / MM_PER_INC;
+			int yDraw = currentRowCount * _outputSettings.cardH * PDF_RESOLUTION / MM_PER_INC;
+			painter.drawImage(xDraw , yDraw, map);
+
+			currentColCount++;
+
+			if (currentColCount == _outputSettings.columnCountPerPage)
+			{
+				currentColCount = 0;
+				currentRowCount++;
+			}
+
+			if (currentRowCount == _outputSettings.rowCountPerPage)
+			{
+				currentColCount = 0;
+				currentRowCount = 0;
+				pdfWriter.newPage();
+			}
+		}
+	}
 
 	// do any other generations
 }

@@ -2,19 +2,20 @@
 
 
 
-class OutputSettings
+struct OutputSettings
 {
-public:
-
-	void setOrientation(int a_orientation);
 	bool isValid() const;
 
-private:
+	double cardW{40};
+	double cardH{60};
 
-	double _cardW{0};
-	double _cardH{0};
+	int cardCountMaxX{10};
+	int cardCountMaxY{7};
 
-	int _margin{0};
+	int rowCountPerPage{3};
+	int columnCountPerPage{3};
 
-	bool _isPortraitOrientation{true};
+	int margin{0};
+
+	bool isPortraitOrientation{true};
 };

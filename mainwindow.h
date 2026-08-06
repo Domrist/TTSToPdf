@@ -35,6 +35,12 @@ private slots:
 	void selectSavePath();
 	void setOrientation(int a_state);
 
+	void setMaxHCardcount(int a_cardHMaxCount);
+	void setMaxVCardCount(int a_cardVMaxCount);
+
+	void setRowCountPerPage(int a_count);
+	void setColumnCountPerPage(int a_count);
+
 	void generate();
 
 private:
